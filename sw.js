@@ -1,5 +1,5 @@
 // Offline support: app files come from the network when online (so updates arrive), from the cache when not.
-const CACHE = 'economist-v2';
+const CACHE = 'economist-v3';
 const SHELL = ['./', 'index.html', 'app.js', 'core.js', 'manifest.webmanifest', 'vendor/pdf.min.js', 'vendor/pdf.worker.min.js', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -14,7 +14,7 @@ self.addEventListener('fetch', e => {
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {
-      const net = await Promise.race([fetch(e.request), new Promise((_, j) => setTimeout(() => j(new Error('timeout')), 4000))]);
+      const net = await Promise.race([fetch(e.request, { cache: 'no-cache' }), new Promise((_, j) => setTimeout(() => j(new Error('timeout')), 4000))]);
       if (net && net.ok) cache.put(e.request, net.clone());
       return net;
     } catch (err) {

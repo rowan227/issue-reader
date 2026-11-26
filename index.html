@@ -95,8 +95,8 @@ article .body p:first-child::first-letter{font-weight:700;color:var(--acc)}
 <div class="bar" id="bar"><button class="ib" id="back" hidden aria-label="Back">←</button><h1 id="bt">Economist</h1><span id="tools" hidden><button class="ib" id="fsm" aria-label="Smaller text">A−</button><button class="ib" id="fsp" aria-label="Larger text">A+</button></span><button class="ib" id="gear" aria-label="Library settings">Settings</button></div>
 <main class="wrap" id="view"><p class="empty">Loading…</p></main>
 <script src="vendor/pdf.min.js"></script>
-<script src="core.js"></script>
-<script src="app.js"></script>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+<script src="core.js?v=3"></script>
+<script src="app.js?v=3"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});</script>
 </body>
 </html>

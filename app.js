@@ -1,5 +1,6 @@
 /* Economist reader: offline library on this device, synced through a private GitHub repository. */
 {
+const APP_VERSION = '3 (cover pictures)';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -387,7 +388,7 @@ function viewSettings() {
       <label class="field"><span>Access key (starts with github_pat_)</span><input id="ct" type="password" autocomplete="current-password" spellcheck="false" placeholder="${c.token ? 'Saved: leave empty to keep it' : 'Paste the key here'}"></label>
       <div class="row"><button class="btn" type="submit">Save and test</button>${c.token ? '<button class="btn alt" type="button" id="cx">Disconnect this device</button>' : ''}</div>
       <p class="status" id="cs" role="status"></p>
-    </form></div>`;
+    </form></div><p class="note">App version ${esc(APP_VERSION)}</p>`;
   $('#cf').onsubmit = async ev => {
     ev.preventDefault();
     const st = $('#cs'), tok = $('#ct').value.trim();
