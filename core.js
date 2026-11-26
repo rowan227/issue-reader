@@ -139,7 +139,7 @@
 
   /* ---------- Economist table of contents ---------- */
   async function parseToc(pdf) {
-    const sections = []; let issue = '', coverPage = null;
+    const sections = []; let issue = '', coverPage = null, cover = null;
     for (let p = 1; p <= pdf.numPages; p++) {
       const pg = await pdf.getPage(p);
       const { items } = await pageItems(pg);
@@ -156,6 +156,9 @@
       }
       const cols = clusters.filter(c => c.n >= 2).map(c => c.min - 4);
       if (!cols.length) continue;
+      if (!cover && typeof document !== 'undefined' && (p === 1 || items.some(i => /^On the cover/i.test(i.str.trim())))) {
+        try { cover = await findCover(pg, pdf, items); } catch (e) { cover = null; }
+      }
       if (coverPage == null) {
         const side = toLines(items.filter(i => i.x < cols[0] && i.y > 80)).map(l => l.text).join(' ');
         const cm = side.match(/On the cover(.*?)\bpage\s+(\d+)/i);
@@ -208,7 +211,48 @@
       const h = hits.find(x => /leader/i.test(x.s.name)) || hits[0];
       if (h) name = h.e.title;
     }
-    return { sections: clean, issue, coverPage, name };
+    return { sections: clean, issue, coverPage, name, cover: cover || '' };
+  }
+  /* Cover picture: the portrait image sitting just above the "On the cover" note (else the largest portrait image).
+     The page is rendered and that area cropped, so any image format the PDF uses works. */
+  const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  async function findCover(page, pdf, items) {
+    const OPS = (typeof pdfjsLib !== 'undefined' && pdfjsLib.OPS) || {};
+    const vp = page.getViewport({ scale: 1 });
+    const ops = await page.getOperatorList();
+    let ctm = [1, 0, 0, 1, 0, 0]; const stack = [], imgs = [];
+    for (let i = 0; i < ops.fnArray.length; i++) {
+      const fn = ops.fnArray[i], a = ops.argsArray[i];
+      if (fn === OPS.save) stack.push(ctm);
+      else if (fn === OPS.restore) ctm = stack.pop() || [1, 0, 0, 1, 0, 0];
+      else if (fn === OPS.transform) ctm = mul(ctm, a);
+      else if (fn === OPS.paintFormXObjectBegin) { stack.push(ctm); if (a && a[0]) ctm = mul(ctm, a[0]); }
+      else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() || [1, 0, 0, 1, 0, 0];
+      else if (fn === OPS.paintImageXObject || fn === OPS.paintJpegXObject || fn === OPS.paintInlineImageXObject) {
+        const pts = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y]) => vp.convertToViewportPoint(ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]));
+        const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+        const b = { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+        b.w = b.x1 - b.x0; b.h = b.y1 - b.y0;
+        if (b.w > 40 && b.h > 40) imgs.push(b);
+      }
+    }
+    const portrait = imgs.filter(b => b.h > b.w * 1.05);
+    if (!portrait.length) return null;
+    const lab = items.find(i => /^On the cover/i.test(i.str.trim()));
+    let pick = null;
+    if (lab) {
+      const above = portrait.filter(b => b.y1 <= lab.y + 4 && lab.y - b.y1 < 60 && lab.x >= b.x0 - 20 && lab.x <= b.x1);
+      pick = above.sort((p, q) => (lab.y - p.y1) - (lab.y - q.y1))[0];
+    }
+    if (!pick) pick = portrait.sort((p, q) => q.w * q.h - p.w * p.h)[0];
+    const scale = Math.min(4, 420 / pick.w);
+    const v = page.getViewport({ scale });
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(v.width); cv.height = Math.ceil(v.height);
+    await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+    const out = document.createElement('canvas');
+    out.width = Math.round(pick.w * scale); out.height = Math.round(pick.h * scale);
+    out.getContext('2d').drawImage(cv, pick.x0 * scale, pick.y0 * scale, out.width, out.height, 0, 0, out.width, out.height);
+    return out.toDataURL('image/jpeg', 0.82);
   }
   function addText(entry, it) {
     const k = it.font === entry.numFont ? 'kicker' : 'title';

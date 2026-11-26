@@ -1,5 +1,5 @@
 // Offline support: app files come from the network when online (so updates arrive), from the cache when not.
-const CACHE = 'economist-v1';
+const CACHE = 'economist-v2';
 const SHELL = ['./', 'index.html', 'app.js', 'core.js', 'manifest.webmanifest', 'vendor/pdf.min.js', 'vendor/pdf.worker.min.js', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

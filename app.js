@@ -209,7 +209,7 @@ async function importFiles(files) {
     const tocRaw = t ? { sections: t.sections, issue: t.issue, name: t.name } : (old && old.tocRaw) || null;
     const built = EcoCore.buildContents(tocRaw, articles);
     const name = old && old.customName ? old.name : (tocRaw && tocRaw.name) || (old && old.name) || '';
-    const doc = { ...issueDoc(key, tocRaw, articles, built, name, old && old.read), customName: !!(old && old.customName), pending: true, synced: !!(old && old.synced) };
+    const doc = { ...issueDoc(key, tocRaw, articles, built, name, old && old.read), cover: (t && t.cover) || (old && old.cover) || '', customName: !!(old && old.customName), pending: true, synced: !!(old && old.synced) };
     await db.save(doc, fresh);
   }
   bar.style.width = '100%';
@@ -229,7 +229,7 @@ function zip(files) {
   const d = new Date(), dos = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
   const enc = new TextEncoder(), parts = [], central = []; let off = 0;
   for (const f of files) {
-    const name = enc.encode(f.name), data = enc.encode(f.data), crc = crc32(data);
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
     const h = new DataView(new ArrayBuffer(30));
     h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(12, dos, true);
     h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true);
@@ -263,14 +263,18 @@ function buildEpub(iss, byId) {
     }
     if (li.length) nav.push(`<li><a href="a${n - li.length + 1}.xhtml">${xesc(s.name)}</a><ol>${li.join('')}</ol></li>`);
   }
+  let coverBytes = null;
+  const cm = /^data:image\/jpeg;base64,(.+)$/.exec(iss.cover || '');
+  if (cm) { const bin = atob(cm[1]); coverBytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) coverBytes[i] = bin.charCodeAt(i); }
   const navx = page('Contents', `<nav epub:type="toc" id="toc"><h1>Contents</h1><ol>${nav.join('')}</ol></nav>`);
-  const opf = `<?xml version="1.0" encoding="utf-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">${id}</dc:identifier><dc:title>${xesc(title)}</dc:title><dc:language>en</dc:language><meta property="dcterms:modified">${new Date().toISOString().slice(0, 19)}Z</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="s.css" media-type="text/css"/>${items.map((f, i) => `<item id="c${i}" href="${f}" media-type="application/xhtml+xml"/>`).join('')}</manifest><spine><itemref idref="nav"/>${items.map((f, i) => `<itemref idref="c${i}"/>`).join('')}</spine></package>`;
+  const opf = `<?xml version="1.0" encoding="utf-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="uid">${id}</dc:identifier><dc:title>${xesc(title)}</dc:title><dc:language>en</dc:language>${coverBytes ? '<meta name="cover" content="cover"/>' : ''}<meta property="dcterms:modified">${new Date().toISOString().slice(0, 19)}Z</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="s.css" media-type="text/css"/>${coverBytes ? '<item id="cover" href="cover.jpg" media-type="image/jpeg" properties="cover-image"/>' : ''}${items.map((f, i) => `<item id="c${i}" href="${f}" media-type="application/xhtml+xml"/>`).join('')}</manifest><spine><itemref idref="nav"/>${items.map((f, i) => `<itemref idref="c${i}"/>`).join('')}</spine></package>`;
   return zip([
     { name: 'mimetype', data: 'application/epub+zip' },
     { name: 'META-INF/container.xml', data: '<?xml version="1.0"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>' },
     { name: 'OEBPS/content.opf', data: opf },
     { name: 'OEBPS/nav.xhtml', data: navx },
     { name: 'OEBPS/s.css', data: css },
+    ...(coverBytes ? [{ name: 'OEBPS/cover.jpg', data: coverBytes }] : []),
     ...files
   ]);
 }
@@ -305,7 +309,8 @@ async function renderList() {
   const el = $('#list'); if (!el) return;
   let all = [];
   try { all = (await db.list()).sort((a, b) => b.key.localeCompare(a.key)); } catch (e) { el.innerHTML = '<p class="empty">This browser is not letting the app save data (private browsing can cause this).</p>'; return; }
-  el.innerHTML = all.length ? all.map(i => `<div class="issue"><a href="#i-${esc(i.key)}">${esc(label(i.key))}${i.name ? `<em>${esc(i.name)}</em>` : ''}<span>${esc(tally(i))}${i.hasToc ? '' : ' · no contents page yet'}${i.pending ? ' · not uploaded yet' : ''}</span></a><button class="del" data-k="${esc(i.key)}" aria-label="Remove issue">Remove</button></div>`).join('') : '<p class="empty">No issues yet.</p>';
+  const img = c => /^data:image\/(jpeg|png);base64,[A-Za-z0-9+\/=]+$/.test(c || '') ? `<img class="cov" src="${c}" alt="">` : '<span class="cov none"></span>';
+  el.innerHTML = all.length ? all.map(i => `<div class="issue">${img(i.cover)}<a href="#i-${esc(i.key)}">${esc(label(i.key))}${i.name ? `<em>${esc(i.name)}</em>` : ''}<span>${esc(tally(i))}${i.hasToc ? '' : ' · no contents page yet'}${i.pending ? ' · not uploaded yet' : ''}</span></a><button class="del" data-k="${esc(i.key)}" aria-label="Remove issue">Remove</button></div>`).join('') : '<p class="empty">No issues yet.</p>';
   el.querySelectorAll('.del').forEach(b => b.onclick = async () => {
     if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = configured() ? 'Tap again: removes it on all devices' : 'Tap again to remove'; return; }
     const k = b.dataset.k; b.textContent = 'Removing…';
@@ -324,7 +329,8 @@ async function viewIssue(key) {
   chrome(label(key), true, false);
   const read = new Set(iss.read || []), byId = Object.fromEntries((iss.index || []).map(a => [a.id, a]));
   const sum = iss.hasToc ? tally(iss) + ' available' : 'No contents page imported yet, so ProQuest titles are shown. Import the Table of Contents PDF to add the real titles.';
-  $('#view').innerHTML = `<div class="ihead"><p class="meta">${esc(label(key))}</p><h2 id="nm">${esc(iss.name || 'Untitled issue')}</h2>
+  const cov = /^data:image\/(jpeg|png);base64,[A-Za-z0-9+\/=]+$/.test(iss.cover || '') ? `<img class="hcov" src="${iss.cover}" alt="Cover picture">` : '';
+  $('#view').innerHTML = `<div class="ihead"><div class="htop"><div><p class="meta">${esc(label(key))}</p><h2 id="nm">${esc(iss.name || 'Untitled issue')}</h2></div>${cov}</div>
     <form id="rn" hidden><input id="rni" maxlength="80" aria-label="Issue name"><button class="btn alt" type="submit">Save</button></form>
     <p class="note">${esc(sum)} · <button class="lnk" id="ren">Rename</button></p>
     <div class="exp"><button class="btn" id="ep">Download EPUB</button><span class="status" id="eps" role="status"></span></div></div>` +
