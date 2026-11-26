@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Economist</title>
+<meta name="theme-color" content="#182534">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: quiet, bookish reader; the text is the point
+   IDEA: a printed weekly's contents page you can tap
+   PICTURE: the contents list itself, page numbers hanging in the margin
+   COLOUR and TYPE: paper white / ink, one red accent; Source Serif 4 + Inter
+   LAYOUT: one reading column, sticky top bar, big tap targets */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#121212);--ink:light-dark(#151515,#e9e6e1);--mute:light-dark(#6b6b6b,#9a968f);--line:light-dark(#e6e3de,#2a2927);--acc:light-dark(#c8102e,#ff5a5f);--card:light-dark(#f6f4f0,#1c1b1a);--fs:19px}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+button,label{font:inherit;color:inherit;cursor:pointer}
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:8px max(4vw,12px);background:var(--bg);border-bottom:1px solid var(--line);min-height:56px}
+.bar h1{font:600 16px/1.2 Inter,sans-serif;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{min-width:44px;height:44px;border:0;background:none;border-radius:10px;font-size:15px;font-weight:500;padding:0 10px}
+.ib:hover,.ib:focus-visible{background:var(--card);outline:none}
+.wrap{max-width:720px;margin:0 auto;padding:0 max(4vw,16px) 80px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 20px;border-radius:12px;border:0;background:var(--acc);color:#fff;font-weight:600}
+.btn.alt{background:var(--card);color:var(--ink)}
+.hero{padding:40px 0 24px}
+.hero h2{font:700 clamp(32px,7vw,44px)/1.05 "Source Serif 4",Georgia,serif;margin:0 0 12px;text-wrap:balance}
+.hero p{color:var(--mute);margin:0 0 20px;max-width:56ch}
+.drop{border:2px dashed var(--line);border-radius:16px;padding:22px;text-align:center;margin:24px 0 28px}
+.drop.on{border-color:var(--acc)}.drop[hidden]{display:none}
+.drop small{display:block;color:var(--mute);margin-top:10px}
+input[type=file]{position:absolute;opacity:0;width:1px;height:1px}
+.status{font-size:14px;color:var(--mute);min-height:20px;margin-top:10px}
+.prog{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px;display:none}
+.prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+.lib h3,.sec{font:600 13px/1 Inter,sans-serif;color:var(--acc);margin:32px 0 6px;letter-spacing:.01em}
+.issue{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.issue a{flex:1;color:inherit;text-decoration:none;font:600 20px/1.2 "Source Serif 4",serif}
+.issue span{color:var(--mute);font-size:13px;display:block;font:400 13px Inter,sans-serif;margin-top:4px}
+.toc{list-style:none;margin:0;padding:0}
+.toc li{border-bottom:1px solid var(--line)}
+.toc a,.toc div.na{display:grid;grid-template-columns:2.4em 1fr;gap:4px 10px;padding:12px 0;color:inherit;text-decoration:none;min-height:48px}
+.toc .pg{font:600 15px/1.35 "Source Serif 4",serif;color:var(--mute);text-align:right}
+.toc .k{display:block;font:600 12.5px/1.3 Inter,sans-serif;color:var(--acc);margin-bottom:2px}
+.toc .t{font:600 18px/1.3 "Source Serif 4",serif}
+.toc .pq{display:block;font:400 13.5px/1.35 Inter,sans-serif;color:var(--mute);margin-top:3px}
+.toc .read .t{color:var(--mute);font-weight:400}
+.toc div.na .t{color:var(--mute);font-weight:400}
+.toc .na .pq{font-style:italic}
+.meta{font-size:13px;color:var(--mute);margin:28px 0 6px}
+article h2{font:700 clamp(30px,6.5vw,40px)/1.08 "Source Serif 4",serif;margin:4px 0 10px;text-wrap:balance}
+article .kick{font:600 13px Inter,sans-serif;color:var(--acc)}
+article .rub{font:italic 400 18px/1.4 "Source Serif 4",serif;color:var(--mute);margin:0 0 24px}
+article .body p{font:400 var(--fs)/1.6 "Source Serif 4",Georgia,serif;margin:0 0 .85em;hyphens:auto}
+article .body h3{font:600 calc(var(--fs) - 1px)/1.3 Inter,sans-serif;margin:1.6em 0 .5em}
+article .body p:first-child::first-letter{font-weight:700;color:var(--acc)}
+.pn{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:36px}
+.pn a{display:block;padding:14px;border-radius:12px;background:var(--card);color:inherit;text-decoration:none;font:600 15px/1.3 "Source Serif 4",serif;min-height:48px}
+.pn a small{display:block;font:500 12px Inter,sans-serif;color:var(--mute);margin-bottom:4px}
+.pn a.r{text-align:right}
+.empty{color:var(--mute);padding:20px 0}
+.del{border:0;background:none;color:var(--mute);min-height:44px;padding:0 8px;font-size:13px}
+.note{font-size:13px;color:var(--mute);margin-top:6px}
+.ihead h2{font:700 clamp(30px,7vw,42px)/1.05 "Source Serif 4",Georgia,serif;margin:2px 0 8px;text-wrap:balance}
+.ihead .meta{margin-top:24px}
+.issue em{display:block;font-style:normal;font-weight:400;font-size:17px;margin-top:2px}
+.lnk{border:0;background:none;padding:0;color:var(--acc);font-size:13px;text-decoration:underline;min-height:24px}
+#rn{display:flex;gap:8px;margin:8px 0}#rn[hidden]{display:none}#rn input{flex:1;font:16px Inter,sans-serif;padding:0 12px;min-height:48px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:default}
+.exp{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:22px 0 4px}.exp .status{margin:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+.sync{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:6px 0 4px;font-size:13px;color:var(--mute)}
+.sync .btn{min-height:40px;padding:0 14px;font-size:14px}
+.card{background:var(--card);border-radius:16px;padding:20px;margin:8px 0 24px}
+.card h3{font:600 17px/1.3 Inter,sans-serif;margin:0 0 6px}
+.card p{margin:0 0 14px;color:var(--mute);font-size:14px}
+.field{display:block;margin:0 0 14px}
+.field span{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
+.field input{width:100%;font:16px Inter,sans-serif;padding:0 12px;min-height:48px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ok{color:light-dark(#1d7a3a,#6fd08c)}.bad{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"><button class="ib" id="back" hidden aria-label="Back">←</button><h1 id="bt">Economist</h1><span id="tools" hidden><button class="ib" id="fsm" aria-label="Smaller text">A−</button><button class="ib" id="fsp" aria-label="Larger text">A+</button></span><button class="ib" id="gear" aria-label="Library settings">Settings</button></div>
+<main class="wrap" id="view"><p class="empty">Loading…</p></main>
+<script src="vendor/pdf.min.js"></script>
+<script src="core.js"></script>
+<script src="app.js"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+</body>
+</html>
